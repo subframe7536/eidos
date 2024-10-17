@@ -5,7 +5,9 @@ import {
   DataUpdateSignalType,
   EidosDataEventChannelMsg,
   EidosDataEventChannelMsgType,
+  EidosDataEventChannelName,
 } from "@/lib/const"
+import { isInkServiceMode } from "@/lib/env"
 import { useCurrentNode, useNodeMap } from "@/hooks/use-current-node"
 import { useCurrentPathInfo } from "@/hooks/use-current-pathinfo"
 import { useEmoji } from "@/hooks/use-emoji"
@@ -40,6 +42,7 @@ export const NodeComponent = ({
   const { updateIcon, updateCover, updateHideProperties } = useNode()
 
   useEffect(() => {
+    const bc = new BroadcastChannel(EidosDataEventChannelName)
     const handler = (ev: MessageEvent<EidosDataEventChannelMsg>) => {
       const { type, payload } = ev.data
       if (type === EidosDataEventChannelMsgType.DataUpdateSignalType) {
@@ -59,9 +62,9 @@ export const NodeComponent = ({
         }
       }
     }
-    window.addEventListener("message", handler)
+    bc.addEventListener("message", handler)
     return () => {
-      window.removeEventListener("message", handler)
+      bc.removeEventListener("message", handler)
     }
   }, [updateUiColumns])
 
@@ -86,17 +89,22 @@ export const NodeComponent = ({
   const toggleProperties = async () => {
     await updateHideProperties(node?.id!, !node?.hide_properties)
   }
+  const isReadOnly = node.is_locked || isInkServiceMode
 
   return (
     <>
       <NodeRestore node={node} />
       {node?.type === "table" && (
-        <Table tableName={params.tableName!} space={params.database!} />
+        <Table
+          tableName={params.tableName!}
+          space={params.database!}
+          isReadOnly={isReadOnly}
+        />
       )}
       {node?.type === "doc" && (
         <Editor
           isActive
-          isEditable={node.is_locked ? false : true}
+          isEditable={isReadOnly ? false : true}
           docId={node.id}
           title={node.name}
           showTitle
@@ -116,15 +124,19 @@ export const NodeComponent = ({
           }
           topComponent={
             <div className="flex h-[28px] cursor-pointer gap-2 opacity-100 hover:opacity-100 sm:opacity-0">
-              {!node.icon && (
-                <Button size="xs" variant="ghost" onClick={handleAddIcon}>
-                  Add Icon
-                </Button>
-              )}
-              {!node.cover && (
-                <Button size="xs" variant="ghost" onClick={handleAddCover}>
-                  Add Cover
-                </Button>
+              {!isReadOnly && (
+                <>
+                  {!node.icon && (
+                    <Button size="xs" variant="ghost" onClick={handleAddIcon}>
+                      Add Icon
+                    </Button>
+                  )}
+                  {!node.cover && (
+                    <Button size="xs" variant="ghost" onClick={handleAddCover}>
+                      Add Cover
+                    </Button>
+                  )}
+                </>
               )}
               {parentNode?.type === "table" && (
                 <Button size="xs" variant="ghost" onClick={toggleProperties}>

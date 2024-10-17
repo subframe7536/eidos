@@ -1,4 +1,8 @@
 import React from "react"
+import ReactDOM from "react-dom/client"
+import { RouterProvider, createBrowserRouter, redirect } from "react-router-dom"
+
+import { DownloadPage } from "@/components/landing/download"
 import NodePage from "@/apps/web-app/[database]/[node]/page"
 import EverydayPage from "@/apps/web-app/[database]/everyday/[day]/page"
 import EverydayHomePage from "@/apps/web-app/[database]/everyday/page"
@@ -22,10 +26,8 @@ import ShareNodePage from "@/apps/web-app/share/[database]/[table]/page"
 import ShareLayout from "@/apps/web-app/share/[database]/layout"
 // share
 import SharePage from "@/apps/web-app/share/page"
-import ReactDOM from "react-dom/client"
-import { RouterProvider, createBrowserRouter, redirect } from "react-router-dom"
 
-import { spaceFileSystem } from "../../lib/storage/space"
+import { SpaceFileSystem } from "../../lib/storage/space"
 import { NotFound } from "./404"
 import { AppPage } from "./[database]/apps/page"
 import { ScriptDetailPage } from "./[database]/scripts/detail"
@@ -59,6 +61,10 @@ const router = createBrowserRouter([
       {
         path: "lab",
         element: <LabPage />,
+      },
+      {
+        path: "download",
+        element: <DownloadPage />,
       },
       {
         path: "settings",
@@ -103,7 +109,8 @@ const router = createBrowserRouter([
         element: <SpaceLayout />,
         loader: async ({ params }) => {
           // check the space is exist
-          const spaceNames = await spaceFileSystem.list()
+
+          const spaceNames = await new SpaceFileSystem().list()
           if (params.database && !spaceNames.includes(params.database)) {
             return redirect("/404")
           }

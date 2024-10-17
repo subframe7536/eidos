@@ -1,7 +1,7 @@
-import { MsgType } from "@/lib/const"
-import { EIDOS_VERSION, logger } from "@/lib/log"
-import { getConfig } from "@/lib/storage/indexeddb"
 import { APIAgentFormValues } from "@/apps/web-app/settings/api/store"
+import { MsgType } from "@/lib/const"
+import { EIDOS_VERSION, logger } from "@/lib/env"
+import { getConfig } from "@/lib/storage/indexeddb"
 
 import { DataSpace } from "./DataSpace"
 import { initWs } from "./api-agent/ws"
@@ -35,7 +35,7 @@ const handleFunctionCall = async (
     //
     _dataspace = await loadDatabase(dbName)
   }
-  let callMethod: Function = () => {}
+  let callMethod: Function = () => { }
   if (method.includes(".")) {
     let obj: any = _dataspace
     const properties = method.split(".")

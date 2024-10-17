@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
-import { isDevMode, isSelfHosted } from "@/lib/log"
+import { isDesktopMode, isDevMode, isSelfHosted } from "@/lib/env"
 import { uuidv7 } from "@/lib/utils"
 import { verifyMessage } from "@/lib/web/crypto"
 import { useToast } from "@/components/ui/use-toast"
@@ -101,8 +101,8 @@ export const useActivation = () => {
       isDevMode || isSelfHosted
         ? true
         : clientId && license
-        ? isActivated
-        : false,
+          ? isActivated
+          : false,
     active,
   }
 }

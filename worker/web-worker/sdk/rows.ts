@@ -9,6 +9,8 @@ import type { IField } from "@/lib/store/interface"
 import { DataSpace } from "../DataSpace"
 import { workerStore } from "../store"
 import { TableManager } from "./table"
+import { BaseServerDatabase } from "@/lib/sqlite/interface"
+import { NodeServerDatabase } from "@/electron/sqlite-server"
 
 export class RowsManager {
   dataSpace: DataSpace
@@ -172,20 +174,23 @@ export class RowsManager {
       offset?: number
       raw?: boolean
       select?: string[]
+      rawQuery?: string // if set, it will ignore viewId and filter
     }
   ) {
     const { fieldRawColumnNameFieldMap, fieldNameRawColumnNameMap } =
       await this.getFieldMap()
 
     let rows: Record<string, any>[] = []
-    if (options?.viewId) {
+    if (options?.rawQuery) {
+      rows = await this.dataSpace.exec2(options.rawQuery)
+    } else if (options?.viewId) {
       const view: IView = await this.dataSpace.view.get(options.viewId)
       if (!view) {
         throw new Error("view not found")
       }
       rows = await this.dataSpace.exec2(view.query)
     } else {
-      const { rawData, notExistKeys } = this.transformData(filter, {
+      const { rawData, notExistKeys } = this.transformData(filter || {}, {
         fieldNameRawColumnNameMap,
         fieldRawColumnNameFieldMap,
       })
@@ -194,13 +199,11 @@ export class RowsManager {
       }
 
       const hasFilter = Object.keys(rawData).length > 0
-      const sql = `SELECT * FROM ${this.table.rawTableName} ${
-        hasFilter ? "WHERE" : ""
-      } ${Object.keys(rawData)
-        .map((key) => `${key} = ?`)
-        .join(" AND ")} ${options?.limit ? `LIMIT ${options.limit}` : ""} ${
-        options?.offset ? `OFFSET ${options.offset}` : ""
-      }`
+      const sql = `SELECT * FROM ${this.table.rawTableName} ${hasFilter ? "WHERE" : ""
+        } ${Object.keys(rawData)
+          .map((key) => `${key} = ?`)
+          .join(" AND ")} ${options?.limit ? `LIMIT ${options.limit}` : ""} ${options?.offset ? `OFFSET ${options.offset}` : ""
+        }`
       const bind = Object.values(rawData)
       rows = await this.dataSpace.exec2(sql, bind)
     }
@@ -275,13 +278,19 @@ export class RowsManager {
     const stmt = this.dataSpace.db.prepare(`
       INSERT INTO ${this.table.rawTableName} (${keys}) VALUES (${_values})`)
     // for high performance, use transaction
-    this.dataSpace.db.transaction(async () => {
+    if (this.dataSpace.db instanceof BaseServerDatabase) {
       for (const value of values) {
-        stmt.bind(value).step()
-        stmt.reset()
+        stmt.run(value)
       }
-      stmt.finalize()
-    })
+    } else {
+      this.dataSpace.db.transaction(async () => {
+        for (const value of values) {
+          stmt.bind(value).step()
+          stmt.reset()
+        }
+        stmt.finalize()
+      })
+    }
     return createDatas
   }
 
